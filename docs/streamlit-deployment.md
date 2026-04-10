@@ -22,6 +22,8 @@ pip install streamlit
 ```bash
 uv run streamlit run docs/examples/trading_streamlit_app.py
 ```
+The Streamlit app loads helper modules directly from `src/notebooklm/` so it can run from a source checkout without installing the package first.
+
 
 App capabilities:
 - Manual signal input

@@ -6,25 +6,42 @@ Run:
 
 from __future__ import annotations
 
+import importlib.util
 import inspect
 import json
 from pathlib import Path
 
 import streamlit as st
 
-from notebooklm._trading_report import (
-    TradingReportInput,
-    build_notebooklm_market_report_prompt,
-    parse_tradingagents_json,
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src" / "notebooklm"
+
+
+def _load_module(module_name: str, file_name: str):
+    module_path = SRC_ROOT / file_name
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Failed to load module spec: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+trading_report_module = _load_module("_trading_report", "_trading_report.py")
+trading_streamlit_module = _load_module("_trading_streamlit", "_trading_streamlit.py")
+
+TradingReportInput = trading_report_module.TradingReportInput
+parse_tradingagents_json = trading_report_module.parse_tradingagents_json
+build_notebooklm_market_report_prompt = (
+    trading_report_module.build_notebooklm_market_report_prompt
 )
-from notebooklm._trading_streamlit import (
-    DeepSeekAPIError,
-    TradingAgentCommandError,
-    TradingAgentOutputError,
-    generate_deepseek_discussion,
-    push_markdown_to_notebook,
-    run_trading_agents_command,
-)
+
+TradingAgentCommandError = trading_streamlit_module.TradingAgentCommandError
+TradingAgentOutputError = trading_streamlit_module.TradingAgentOutputError
+DeepSeekAPIError = trading_streamlit_module.DeepSeekAPIError
+run_trading_agents_command = trading_streamlit_module.run_trading_agents_command
+push_markdown_to_notebook = trading_streamlit_module.push_markdown_to_notebook
+generate_deepseek_discussion = trading_streamlit_module.generate_deepseek_discussion
 
 st.set_page_config(page_title="NotebookLM Trading Studio", page_icon="📈", layout="wide")
 
