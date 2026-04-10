@@ -6,6 +6,7 @@ Run:
 
 from __future__ import annotations
 
+import inspect
 import json
 from pathlib import Path
 
@@ -17,8 +18,10 @@ from notebooklm._trading_report import (
     parse_tradingagents_json,
 )
 from notebooklm._trading_streamlit import (
+    DeepSeekAPIError,
     TradingAgentCommandError,
     TradingAgentOutputError,
+    generate_deepseek_discussion,
     push_markdown_to_notebook,
     run_trading_agents_command,
 )
@@ -149,9 +152,10 @@ def _run_command() -> TradingReportInput | None:
             st.code(rendered_cmd, language="bash")
             try:
                 working_dir = Path(working_dir_raw).expanduser() if working_dir_raw.strip() else None
-                payload = run_trading_agents_command(
-                    rendered_cmd, timeout=int(timeout), working_dir=working_dir
-                )
+                call_kwargs = {"timeout": int(timeout)}
+                if "working_dir" in inspect.signature(run_trading_agents_command).parameters:
+                    call_kwargs["working_dir"] = working_dir
+                payload = run_trading_agents_command(rendered_cmd, **call_kwargs)
                 temp_path = Path("/tmp/tradingagents-runtime.json")
                 temp_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
                 report_input = parse_tradingagents_json(temp_path)
@@ -200,7 +204,9 @@ if st.button("生成 NotebookLM 报告", type="primary", use_container_width=Tru
         st.success("报告已生成。")
 
 if st.session_state.report_prompt:
-    preview_tab, json_tab, notebook_tab = st.tabs(["Markdown 预览", "JSON 预览", "喂给 NotebookLM"])
+    preview_tab, json_tab, notebook_tab, deepseek_tab = st.tabs(
+        ["Markdown 预览", "JSON 预览", "喂给 NotebookLM", "DeepSeek 讨论"]
+    )
 
     with preview_tab:
         st.code(st.session_state.report_prompt, language="markdown")
@@ -244,6 +250,29 @@ if st.session_state.report_prompt:
                     st.text(output)
                 except RuntimeError as exc:
                     st.error(str(exc))
+
+    with deepseek_tab:
+        st.write("调用 DeepSeek API 生成多角色市场讨论（Bull/Bear/Risk Manager）。")
+        api_key = st.text_input("DeepSeek API Key", type="password")
+        model = st.text_input("Model", value="deepseek-chat")
+
+        if st.button("生成 DeepSeek 讨论", use_container_width=True):
+            try:
+                discussion = generate_deepseek_discussion(
+                    st.session_state.report_prompt,
+                    api_key=api_key,
+                    model=model,
+                )
+                st.code(discussion, language="markdown")
+                st.download_button(
+                    "下载讨论稿",
+                    data=discussion.encode("utf-8"),
+                    file_name="deepseek_market_discussion.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
+            except DeepSeekAPIError as exc:
+                st.error(str(exc))
 
 st.divider()
 st.info(

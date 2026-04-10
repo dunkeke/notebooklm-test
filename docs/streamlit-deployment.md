@@ -29,6 +29,7 @@ App capabilities:
 - Run TradingAgents command directly (expects JSON on stdout)
 - Generate NotebookLM-style markdown + JSON
 - Push markdown source directly to NotebookLM notebook
+- Call DeepSeek API to create multi-role market discussion output
 
 ## 3) Direct TradingAgents execution in UI
 
@@ -42,6 +43,8 @@ The app will replace `{instrument}` and `{analysis_date}` then parse stdout as J
 
 If you see `ModuleNotFoundError: No module named 'tradingagents'`, install TradingAgents dependencies and set the app's **TradingAgents 工作目录** to your cloned TradingAgents repository path.
 
+If Streamlit shows a redacted `TypeError` at TradingAgents execution, update the repository to this latest version. This build includes backward-compatible invocation logic for older helper signatures.
+
 ## 4) Push report directly to NotebookLM
 
 In tab **喂给 NotebookLM** fill:
@@ -54,7 +57,15 @@ The app internally calls:
 notebooklm [-p <profile>] source add /tmp/notebooklm_trading_report.md -n <notebook_id>
 ```
 
-## 5) Deploy remotely
+## 5) Generate DeepSeek discussion
+
+In tab **DeepSeek 讨论** fill:
+- `DeepSeek API Key`
+- model (default `deepseek-chat`)
+
+The app sends your generated report prompt to DeepSeek chat-completions API and returns a realistic Bull/Bear/Risk panel discussion with desk conclusion.
+
+## 6) Deploy remotely
 
 You can deploy this Streamlit app on Docker/Cloud Run/VM, then expose port `8501` behind auth and TLS.
 
@@ -62,3 +73,4 @@ Security notes:
 - Restrict who can access command execution mode.
 - Use a low-privilege runtime user.
 - Prefer allowlisted TradingAgents commands in production.
+- Keep DeepSeek API keys in secret manager / env vars (not hardcoded).

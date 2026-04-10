@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import httpx
 import pytest
 
 from notebooklm._trading_streamlit import (
+    DeepSeekAPIError,
     TradingAgentCommandError,
     TradingAgentOutputError,
+    generate_deepseek_discussion,
     push_markdown_to_notebook,
     run_trading_agents_command,
 )
@@ -109,3 +112,33 @@ class TestPushMarkdownToNotebook:
         called_args = mock_run.call_args[0][0]
         assert called_args[:3] == ["notebooklm", "-p", "work"]
         assert called_args[-2:] == ["-n", "nb123"]
+
+
+class TestGenerateDeepSeekDiscussion:
+    """Unit tests for DeepSeek discussion generation."""
+
+    def test_requires_api_key(self):
+        with pytest.raises(DeepSeekAPIError):
+            generate_deepseek_discussion("report", api_key="")
+
+    def test_parses_chat_completion_response(self):
+        response = Mock()
+        response.json.return_value = {
+            "choices": [{"message": {"content": "bull vs bear discussion"}}]
+        }
+        response.raise_for_status = Mock()
+
+        with patch("notebooklm._trading_streamlit.httpx.post", return_value=response):
+            text = generate_deepseek_discussion("report", api_key="sk-123")
+
+        assert "discussion" in text
+
+    def test_wraps_http_errors(self):
+        with (
+            patch(
+                "notebooklm._trading_streamlit.httpx.post",
+                side_effect=httpx.ConnectError("network down"),
+            ),
+            pytest.raises(DeepSeekAPIError),
+        ):
+            generate_deepseek_discussion("report", api_key="sk-123")

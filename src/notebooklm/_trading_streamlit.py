@@ -7,6 +7,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 
 class TradingAgentCommandError(RuntimeError):
     """Raised when TradingAgents command execution fails."""
@@ -14,6 +16,10 @@ class TradingAgentCommandError(RuntimeError):
 
 class TradingAgentOutputError(RuntimeError):
     """Raised when TradingAgents command output is not valid JSON."""
+
+
+class DeepSeekAPIError(RuntimeError):
+    """Raised when DeepSeek API calls fail."""
 
 
 def run_trading_agents_command(
@@ -69,6 +75,57 @@ def push_markdown_to_notebook(markdown_path: Path, notebook_id: str, profile: st
         stderr = result.stderr.strip() or result.stdout.strip() or "unknown error"
         raise RuntimeError(f"notebooklm source add failed: {stderr}")
     return result.stdout.strip() or "uploaded"
+
+
+def generate_deepseek_discussion(
+    report_prompt: str,
+    api_key: str,
+    model: str = "deepseek-chat",
+    timeout: float = 60.0,
+    base_url: str = "https://api.deepseek.com/v1",
+) -> str:
+    """Generate market discussion using DeepSeek chat-completions API."""
+    if not api_key.strip():
+        raise DeepSeekAPIError("DeepSeek API key is required")
+
+    url = f"{base_url.rstrip('/')}/chat/completions"
+    payload = {
+        "model": model,
+        "temperature": 0.2,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are an institutional energy derivatives panel. "
+                    "Debate bull/bear views, challenge assumptions, and conclude with a risk-aware plan."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Based on the trading report draft below, produce a realistic panel discussion "
+                    "between Bull Analyst, Bear Analyst, and Risk Manager. End with a final desk decision.\n\n"
+                    f"{report_prompt}"
+                ),
+            },
+        ],
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        response = httpx.post(url, headers=headers, json=payload, timeout=timeout)
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise DeepSeekAPIError(f"DeepSeek API request failed: {exc}") from exc
+
+    data = response.json()
+    try:
+        return data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError) as exc:
+        raise DeepSeekAPIError("DeepSeek API response format is invalid") from exc
 
 
 def _build_install_hint(stderr: str, working_dir: Path | None) -> str:
