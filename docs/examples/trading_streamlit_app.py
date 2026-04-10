@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import json
+import sys
 from pathlib import Path
 
 import streamlit as st
@@ -23,6 +24,8 @@ def _load_module(module_name: str, file_name: str):
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Failed to load module spec: {module_path}")
     module = importlib.util.module_from_spec(spec)
+    # Required for dataclasses and runtime introspection in dynamically loaded modules
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
