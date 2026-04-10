@@ -3,7 +3,7 @@
 **Status:** Active  
 **Last Updated:** 2026-04-10
 
-This guide shows how to deploy a lightweight front-end for the TradingAgents + NotebookLM flow.
+This guide shows how to deploy a front-end for the TradingAgents + NotebookLM workflow.
 
 ## 1) Install dependencies
 
@@ -17,34 +17,46 @@ Or with pip:
 pip install streamlit
 ```
 
-## 2) Run the app locally
+## 2) Run the app
 
 ```bash
 uv run streamlit run docs/examples/trading_streamlit_app.py
 ```
 
-The app allows two modes:
-- Manual form input for market signal data
-- Upload a TradingAgents JSON output file
+App capabilities:
+- Manual signal input
+- Upload TradingAgents JSON
+- Run TradingAgents command directly (expects JSON on stdout)
+- Generate NotebookLM-style markdown + JSON
+- Push markdown source directly to NotebookLM notebook
 
-Both modes generate a NotebookLM-style markdown report draft.
+## 3) Direct TradingAgents execution in UI
 
-## 3) Optional: deploy remotely
-
-You can deploy the Streamlit app on any VM/container platform:
-
-- **Docker**: run Streamlit on port `8501`
-- **Cloud Run / ECS / VM**: expose `8501` and restrict access with auth/proxy
-- **Internal server**: reverse-proxy with Nginx and TLS
-
-## 4) Integrate with NotebookLM CLI
-
-After downloading markdown from the UI:
+In the app choose **运行 TradingAgents 命令** and provide a command template, e.g.:
 
 ```bash
-notebooklm source add ./brent_notebooklm_report.md
-notebooklm ask "Summarize actionable trading plan and risk triggers"
-notebooklm generate report --format briefing-doc --wait
+python -m tradingagents.run --symbol "{instrument}" --json
 ```
 
-This creates a simple analyst workflow where TradingAgents does signal generation and NotebookLM handles narrative/reporting.
+The app will replace `{instrument}` with the selected symbol and parse stdout as JSON.
+
+## 4) Push report directly to NotebookLM
+
+In tab **喂给 NotebookLM** fill:
+- Notebook ID
+- Optional profile name
+
+The app internally calls:
+
+```bash
+notebooklm [-p <profile>] source add /tmp/notebooklm_trading_report.md -n <notebook_id>
+```
+
+## 5) Deploy remotely
+
+You can deploy this Streamlit app on Docker/Cloud Run/VM, then expose port `8501` behind auth and TLS.
+
+Security notes:
+- Restrict who can access command execution mode.
+- Use a low-privilege runtime user.
+- Prefer allowlisted TradingAgents commands in production.
