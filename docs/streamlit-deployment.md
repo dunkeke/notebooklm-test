@@ -35,10 +35,12 @@ App capabilities:
 In the app choose **运行 TradingAgents 命令** and provide a command template, e.g.:
 
 ```bash
-python -m tradingagents.run --symbol "{instrument}" --json
+python -c "import json; from tradingagents.graph.trading_graph import TradingAgentsGraph; from tradingagents.default_config import DEFAULT_CONFIG; ta=TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy()); _, d = ta.propagate("{instrument}", "{analysis_date}"); print(json.dumps(d, ensure_ascii=False))"
 ```
 
-The app will replace `{instrument}` with the selected symbol and parse stdout as JSON.
+The app will replace `{instrument}` and `{analysis_date}` then parse stdout as JSON.
+
+If you see `ModuleNotFoundError: No module named 'tradingagents'`, install TradingAgents dependencies and set the app's **TradingAgents 工作目录** to your cloned TradingAgents repository path.
 
 ## 4) Push report directly to NotebookLM
 

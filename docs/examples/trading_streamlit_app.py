@@ -129,18 +129,29 @@ def _upload_json() -> TradingReportInput | None:
 def _run_command() -> TradingReportInput | None:
     command = st.text_area(
         "TradingAgents 命令（需输出 JSON 到 stdout）",
-        value='python -m tradingagents.run --symbol "{instrument}" --json',
-        help="会将 {instrument} 替换为下方输入值。",
+        value=(
+            "python -c \"import json; from tradingagents.graph.trading_graph import "
+            "TradingAgentsGraph; from tradingagents.default_config import DEFAULT_CONFIG; "
+            "ta=TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy()); "
+            "_, d = ta.propagate(\"{instrument}\", \"{analysis_date}\"); "
+            "print(json.dumps(d, ensure_ascii=False))\""
+        ),
+        help="会替换 {instrument} 与 {analysis_date}。",
     )
     instrument = st.text_input("运行标的", value="brent")
+    analysis_date = st.text_input("分析日期", value="2025-05-26")
+    working_dir_raw = st.text_input("TradingAgents 工作目录（可选）", value="")
     timeout = st.number_input("超时（秒）", min_value=30, max_value=600, value=180, step=30)
 
     if st.button("执行 TradingAgents", use_container_width=True):
-        rendered_cmd = command.format(instrument=instrument)
+        rendered_cmd = command.format(instrument=instrument, analysis_date=analysis_date)
         with st.status("正在执行 TradingAgents 命令...", expanded=True) as status:
             st.code(rendered_cmd, language="bash")
             try:
-                payload = run_trading_agents_command(rendered_cmd, timeout=int(timeout))
+                working_dir = Path(working_dir_raw).expanduser() if working_dir_raw.strip() else None
+                payload = run_trading_agents_command(
+                    rendered_cmd, timeout=int(timeout), working_dir=working_dir
+                )
                 temp_path = Path("/tmp/tradingagents-runtime.json")
                 temp_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
                 report_input = parse_tradingagents_json(temp_path)

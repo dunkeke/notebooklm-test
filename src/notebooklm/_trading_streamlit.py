@@ -16,7 +16,11 @@ class TradingAgentOutputError(RuntimeError):
     """Raised when TradingAgents command output is not valid JSON."""
 
 
-def run_trading_agents_command(command: str, timeout: int = 180) -> dict[str, Any]:
+def run_trading_agents_command(
+    command: str,
+    timeout: int = 180,
+    working_dir: Path | None = None,
+) -> dict[str, Any]:
     """Execute TradingAgents command and parse JSON output from stdout.
 
     The command should print a single JSON object to stdout.
@@ -28,12 +32,14 @@ def run_trading_agents_command(command: str, timeout: int = 180) -> dict[str, An
         capture_output=True,
         text=True,
         timeout=timeout,
+        cwd=str(working_dir) if working_dir else None,
     )
 
     if result.returncode != 0:
         stderr = result.stderr.strip() or "(no stderr)"
+        hint = _build_install_hint(stderr, working_dir)
         raise TradingAgentCommandError(
-            f"TradingAgents command failed with exit code {result.returncode}: {stderr}"
+            f"TradingAgents command failed with exit code {result.returncode}: {stderr}{hint}"
         )
 
     stdout = result.stdout.strip()
@@ -63,3 +69,20 @@ def push_markdown_to_notebook(markdown_path: Path, notebook_id: str, profile: st
         stderr = result.stderr.strip() or result.stdout.strip() or "unknown error"
         raise RuntimeError(f"notebooklm source add failed: {stderr}")
     return result.stdout.strip() or "uploaded"
+
+
+def _build_install_hint(stderr: str, working_dir: Path | None) -> str:
+    lowered = stderr.lower()
+    missing_module = "no module named 'tradingagents'" in lowered
+    missing_cli = "no module named 'cli'" in lowered
+    if not (missing_module or missing_cli):
+        return ""
+
+    cwd_msg = f" 当前工作目录: {working_dir}." if working_dir else ""
+    return (
+        "\nHint: 看起来 TradingAgents 没有安装或工作目录不正确。"
+        " 请先 `git clone https://github.com/TauricResearch/TradingAgents.git`，"
+        " 在该目录执行 `pip install -r requirements.txt`，"
+        " 并在本应用中把 TradingAgents 工作目录设为该仓库路径。"
+        f"{cwd_msg}"
+    )

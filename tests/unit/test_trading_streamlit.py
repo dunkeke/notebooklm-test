@@ -32,6 +32,18 @@ class TestRunTradingAgentsCommand:
         assert payload["symbol"] == "brent"
         assert payload["decision"]["direction"] == "long"
 
+    def test_passes_working_directory(self, tmp_path: Path):
+        completed = subprocess.CompletedProcess(
+            args=["fake"],
+            returncode=0,
+            stdout='{"symbol":"brent"}',
+            stderr="",
+        )
+        with patch("notebooklm._trading_streamlit.subprocess.run", return_value=completed) as mock_run:
+            run_trading_agents_command("fake", working_dir=tmp_path)
+
+        assert mock_run.call_args.kwargs["cwd"] == str(tmp_path)
+
     def test_raises_command_error_on_nonzero_exit(self):
         completed = subprocess.CompletedProcess(
             args=["fake"],
@@ -44,6 +56,23 @@ class TestRunTradingAgentsCommand:
             pytest.raises(TradingAgentCommandError),
         ):
             run_trading_agents_command("fake")
+
+    def test_module_not_found_adds_actionable_hint(self):
+        completed = subprocess.CompletedProcess(
+            args=["fake"],
+            returncode=1,
+            stdout="",
+            stderr="ModuleNotFoundError: No module named 'tradingagents'",
+        )
+        with (
+            patch("notebooklm._trading_streamlit.subprocess.run", return_value=completed),
+            pytest.raises(TradingAgentCommandError) as exc,
+        ):
+            run_trading_agents_command("fake", working_dir=Path("/tmp/ta"))
+
+        message = str(exc.value)
+        assert "Hint:" in message
+        assert "TradingAgents" in message
 
     def test_raises_output_error_on_invalid_json(self):
         completed = subprocess.CompletedProcess(
