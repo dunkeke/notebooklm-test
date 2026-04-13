@@ -38,7 +38,7 @@ App capabilities:
 In the app choose **运行 TradingAgents 命令** and provide a command template, e.g.:
 
 ```bash
-python -c "import json; from tradingagents.graph.trading_graph import TradingAgentsGraph; from tradingagents.default_config import DEFAULT_CONFIG; ta=TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy()); _, d = ta.propagate("{instrument}", "{analysis_date}"); print(json.dumps(d, ensure_ascii=False))"
+python -c "import json; from tradingagents.graph.trading_graph import TradingAgentsGraph; from tradingagents.default_config import DEFAULT_CONFIG; ta=TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy()); _, d = ta.propagate('{instrument}', '{analysis_date}'); print(json.dumps(d, ensure_ascii=False))"
 ```
 
 The app will replace `{instrument}` and `{analysis_date}` then parse stdout as JSON.
