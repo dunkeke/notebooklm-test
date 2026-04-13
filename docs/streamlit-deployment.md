@@ -43,7 +43,14 @@ python -c "import json; from tradingagents.graph.trading_graph import TradingAge
 
 The app will replace `{instrument}` and `{analysis_date}` then parse stdout as JSON.
 
-If you see `ModuleNotFoundError: No module named 'tradingagents'`, install TradingAgents dependencies and set the app's **TradingAgents 工作目录** to your cloned TradingAgents repository path.
+If you see `ModuleNotFoundError: No module named 'tradingagents'`, install TradingAgents dependencies and set the app's **TradingAgents 工作目录** to your cloned TradingAgents repository path:
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
+
+The app will also retry once with `PYTHONPATH=<工作目录>` automatically for source-checkout workflows.
 
 If Streamlit shows a redacted `TypeError` at TradingAgents execution, update the repository to this latest version. This build includes backward-compatible invocation logic for older helper signatures.
 
