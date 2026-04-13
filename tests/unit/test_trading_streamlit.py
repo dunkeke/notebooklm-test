@@ -47,6 +47,33 @@ class TestRunTradingAgentsCommand:
 
         assert mock_run.call_args.kwargs["cwd"] == str(tmp_path)
 
+    def test_retries_with_pythonpath_when_module_missing(self, tmp_path: Path):
+        missing = subprocess.CompletedProcess(
+            args=["fake"],
+            returncode=1,
+            stdout="",
+            stderr="ModuleNotFoundError: No module named 'tradingagents'",
+        )
+        success = subprocess.CompletedProcess(
+            args=["fake"],
+            returncode=0,
+            stdout='{"symbol":"brent"}',
+            stderr="",
+        )
+        with patch(
+            "notebooklm._trading_streamlit.subprocess.run",
+            side_effect=[missing, success],
+        ) as mock_run:
+            payload = run_trading_agents_command("fake", working_dir=tmp_path)
+
+        assert payload["symbol"] == "brent"
+        assert mock_run.call_count == 2
+        first_call = mock_run.call_args_list[0].kwargs
+        second_call = mock_run.call_args_list[1].kwargs
+        assert first_call["env"] is None
+        assert second_call["env"] is not None
+        assert second_call["env"]["PYTHONPATH"].startswith(str(tmp_path))
+
     def test_raises_command_error_on_nonzero_exit(self):
         completed = subprocess.CompletedProcess(
             args=["fake"],
@@ -76,6 +103,7 @@ class TestRunTradingAgentsCommand:
         message = str(exc.value)
         assert "Hint:" in message
         assert "TradingAgents" in message
+        assert "pip install -e ." in message
 
     def test_raises_output_error_on_invalid_json(self):
         completed = subprocess.CompletedProcess(

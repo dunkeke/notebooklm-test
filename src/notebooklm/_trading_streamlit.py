@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -31,15 +32,15 @@ def run_trading_agents_command(
 
     The command should print a single JSON object to stdout.
     """
-    result = subprocess.run(
-        command,
-        shell=True,
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        cwd=str(working_dir) if working_dir else None,
-    )
+    cwd = str(working_dir) if working_dir else None
+    result = _execute_shell_command(command, timeout=timeout, cwd=cwd)
+    if result.returncode != 0 and _is_missing_tradingagents_module(result.stderr) and working_dir:
+        result = _execute_shell_command(
+            command,
+            timeout=timeout,
+            cwd=cwd,
+            extra_pythonpath=str(working_dir),
+        )
 
     if result.returncode != 0:
         stderr = result.stderr.strip() or "(no stderr)"
@@ -130,7 +131,7 @@ def generate_deepseek_discussion(
 
 def _build_install_hint(stderr: str, working_dir: Path | None) -> str:
     lowered = stderr.lower()
-    missing_module = "no module named 'tradingagents'" in lowered
+    missing_module = _is_missing_tradingagents_module(stderr)
     missing_cli = "no module named 'cli'" in lowered
     if not (missing_module or missing_cli):
         return ""
@@ -139,7 +140,37 @@ def _build_install_hint(stderr: str, working_dir: Path | None) -> str:
     return (
         "\nHint: 看起来 TradingAgents 没有安装或工作目录不正确。"
         " 请先 `git clone https://github.com/TauricResearch/TradingAgents.git`，"
-        " 在该目录执行 `pip install -r requirements.txt`，"
+        " 在该目录执行 `pip install -r requirements.txt` 和 `pip install -e .`，"
         " 并在本应用中把 TradingAgents 工作目录设为该仓库路径。"
         f"{cwd_msg}"
     )
+
+
+def _execute_shell_command(
+    command: str,
+    timeout: int,
+    cwd: str | None,
+    extra_pythonpath: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    env = None
+    if extra_pythonpath:
+        env = os.environ.copy()
+        existing = env.get("PYTHONPATH", "").strip()
+        env["PYTHONPATH"] = (
+            f"{extra_pythonpath}{os.pathsep}{existing}" if existing else extra_pythonpath
+        )
+
+    return subprocess.run(
+        command,
+        shell=True,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        cwd=cwd,
+        env=env,
+    )
+
+
+def _is_missing_tradingagents_module(stderr: str) -> bool:
+    return "no module named 'tradingagents'" in stderr.lower()

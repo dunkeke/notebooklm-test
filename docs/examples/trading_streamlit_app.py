@@ -156,7 +156,7 @@ def _run_command() -> TradingReportInput | None:
             "python -c \"import json; from tradingagents.graph.trading_graph import "
             "TradingAgentsGraph; from tradingagents.default_config import DEFAULT_CONFIG; "
             "ta=TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy()); "
-            "_, d = ta.propagate(\"{instrument}\", \"{analysis_date}\"); "
+            "_, d = ta.propagate('{instrument}', '{analysis_date}'); "
             "print(json.dumps(d, ensure_ascii=False))\""
         ),
         help="会替换 {instrument} 与 {analysis_date}。",

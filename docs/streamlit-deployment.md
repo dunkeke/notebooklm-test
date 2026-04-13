@@ -38,12 +38,19 @@ App capabilities:
 In the app choose **运行 TradingAgents 命令** and provide a command template, e.g.:
 
 ```bash
-python -c "import json; from tradingagents.graph.trading_graph import TradingAgentsGraph; from tradingagents.default_config import DEFAULT_CONFIG; ta=TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy()); _, d = ta.propagate("{instrument}", "{analysis_date}"); print(json.dumps(d, ensure_ascii=False))"
+python -c "import json; from tradingagents.graph.trading_graph import TradingAgentsGraph; from tradingagents.default_config import DEFAULT_CONFIG; ta=TradingAgentsGraph(debug=False, config=DEFAULT_CONFIG.copy()); _, d = ta.propagate('{instrument}', '{analysis_date}'); print(json.dumps(d, ensure_ascii=False))"
 ```
 
 The app will replace `{instrument}` and `{analysis_date}` then parse stdout as JSON.
 
-If you see `ModuleNotFoundError: No module named 'tradingagents'`, install TradingAgents dependencies and set the app's **TradingAgents 工作目录** to your cloned TradingAgents repository path.
+If you see `ModuleNotFoundError: No module named 'tradingagents'`, install TradingAgents dependencies and set the app's **TradingAgents 工作目录** to your cloned TradingAgents repository path:
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
+
+The app will also retry once with `PYTHONPATH=<工作目录>` automatically for source-checkout workflows.
 
 If Streamlit shows a redacted `TypeError` at TradingAgents execution, update the repository to this latest version. This build includes backward-compatible invocation logic for older helper signatures.
 
